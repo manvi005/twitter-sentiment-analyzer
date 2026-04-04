@@ -1,0 +1,12 @@
+venv/
+__pycache__/
+*.pyc
+.env
+.vercel/
+my-sentiment-model/
+*.pt
+*.bin
+*.safetensors
+.DS_Store
+node_modules/
+logs/

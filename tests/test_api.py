@@ -12,7 +12,7 @@ def test_health():
 
 def test_analyze_valid():
     r = client.post("/analyze", json={"text": "I love this!"})
-    print("\nRESPONSE:", r.json())  # add this line
+    print("\nRESPONSE:", r.json())  
     assert r.status_code == 200
     data = r.json()
     assert "sentiment"  in data

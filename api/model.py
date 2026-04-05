@@ -23,7 +23,7 @@ if USE_LOCAL:
         task="text-classification",
         model=LOCAL_MODEL_ID,
         top_k=None,
-        device=-1        # CPU (your GPU has too little VRAM)
+        device=-1        
     )
     print("Local model ready.")
 else:

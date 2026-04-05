@@ -6,7 +6,7 @@ from pydantic import BaseModel
 import sys, os
 
 sys.path.insert(0, os.path.dirname(__file__))
-from model import predict, batch_predict
+from model import predict, batch_predict, USE_LOCAL, LOCAL_MODEL_ID, API_MODEL_ID
 
 app = FastAPI(
     title="Twitter Sentiment Analyzer",
@@ -36,6 +36,12 @@ def health():
 @app.get("/")
 def root():
     return FileResponse("frontend/index.html")
+@app.get("/info")
+def info():
+    return {
+        "mode":  "local" if USE_LOCAL else "api",
+        "model": LOCAL_MODEL_ID if USE_LOCAL else API_MODEL_ID,
+    }
 
 @app.post("/analyze")
 def analyze(body: SingleInput):

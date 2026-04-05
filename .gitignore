@@ -10,3 +10,4 @@ my-sentiment-model/
 .DS_Store
 node_modules/
 logs/
+.vercel

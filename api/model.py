@@ -1,13 +1,12 @@
-import re
 import os
-import requests
 from dotenv import load_dotenv
 
 load_dotenv()
 
-HF_TOKEN = os.environ.get("HF_TOKEN", "")
-API_URL  = "https://huggingface.co/mew205/twitter-sentiment-roberta"
-HEADERS  = {"Authorization": f"Bearer {HF_TOKEN}"}
+HF_TOKEN       = os.environ.get("HF_TOKEN", "")
+USE_LOCAL      = os.environ.get("USE_LOCAL_MODEL", "false").lower() == "true"
+LOCAL_MODEL_ID = "mew205/twitter-sentiment-roberta"
+API_MODEL_ID   = "cardiffnlp/twitter-roberta-base-sentiment-latest"
 
 LABEL_MAP = {
     "LABEL_0": "negative",
@@ -15,6 +14,27 @@ LABEL_MAP = {
     "LABEL_2": "positive"
 }
 
+# ── Load the right backend once at startup ────────────────────────────
+if USE_LOCAL:
+    from transformers import pipeline
+    print(f"Loading local model: {LOCAL_MODEL_ID}")
+    print("First run downloads ~500MB — subsequent runs are instant...")
+    _pipe = pipeline(
+        task="text-classification",
+        model=LOCAL_MODEL_ID,
+        top_k=None,
+        device=-1        # CPU (your GPU has too little VRAM)
+    )
+    print("Local model ready.")
+else:
+    from huggingface_hub import InferenceClient
+    print(f"Using HuggingFace Inference API: {API_MODEL_ID}")
+    _client = InferenceClient(
+        provider="hf-inference",
+        api_key=HF_TOKEN,
+    )
+
+# ── Shared preprocessing ──────────────────────────────────────────────
 def preprocess(text: str) -> str:
     tokens = []
     for token in text.split():
@@ -25,34 +45,17 @@ def preprocess(text: str) -> str:
         tokens.append(token)
     return " ".join(tokens)
 
-def predict(text: str) -> dict:
+# ── Local inference ───────────────────────────────────────────────────
+def _predict_local(text: str) -> dict:
     cleaned = preprocess(text)
-
-    try:
-        response = requests.post(
-            API_URL,
-            headers=HEADERS,
-            json={"inputs": cleaned},
-            timeout=30
-        )
-        response.raise_for_status()
-    except requests.exceptions.Timeout:
-        raise Exception("HuggingFace API timed out. Try again.")
-    except requests.exceptions.RequestException as e:
-        raise Exception(f"HuggingFace API error: {str(e)}")
-
-    results = response.json()
-
-    # Handle model loading response
-    if isinstance(results, dict) and "error" in results:
-        raise Exception(f"Model error: {results['error']}")
+    results = _pipe(cleaned)[0]
 
     mapped = [
         {
             "label": LABEL_MAP.get(r["label"], r["label"]),
             "score": r["score"]
         }
-        for r in results[0]
+        for r in results
     ]
 
     top = max(mapped, key=lambda x: x["score"])
@@ -61,11 +64,48 @@ def predict(text: str) -> dict:
         "text":       text,
         "sentiment":  top["label"],
         "confidence": round(top["score"], 4),
-        "scores": {
-            r["label"]: round(r["score"], 4)
-            for r in mapped
-        }
+        "scores":     {r["label"]: round(r["score"], 4) for r in mapped},
+        "model":      LOCAL_MODEL_ID,
+        "mode":       "local"
     }
+
+# ── API inference ─────────────────────────────────────────────────────
+def _predict_api(text: str) -> dict:
+    cleaned = preprocess(text)
+
+    try:
+        results = _client.text_classification(
+            text=cleaned,
+            model=API_MODEL_ID,
+        )
+    except Exception as e:
+        raise Exception(f"Inference error: {str(e)}")
+
+    mapped = [
+        {
+            "label": LABEL_MAP.get(r.label, r.label),
+            "score": r.score
+        }
+        for r in results
+    ]
+
+    top = max(mapped, key=lambda x: x["score"])
+
+    return {
+        "text":       text,
+        "sentiment":  top["label"],
+        "confidence": round(top["score"], 4),
+        "scores":     {r["label"]: round(r["score"], 4) for r in mapped},
+        "model":      API_MODEL_ID,
+        "mode":       "api"
+    }
+
+# ── Public interface ──────────────────────────────────────────────────
+def predict(text: str) -> dict:
+    if USE_LOCAL:
+        return _predict_local(text)
+    else:
+        return _predict_api(text)
 
 def batch_predict(texts: list) -> list:
     return [predict(t) for t in texts]

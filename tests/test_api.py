@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../api"))
-from api.index import app
+from index import app
 
 client = TestClient(app)
 
@@ -12,6 +12,7 @@ def test_health():
 
 def test_analyze_valid():
     r = client.post("/analyze", json={"text": "I love this!"})
+    print("\nRESPONSE:", r.json())  # add this line
     assert r.status_code == 200
     data = r.json()
     assert "sentiment"  in data

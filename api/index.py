@@ -17,7 +17,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Serve static files (Lottie JSON animations) ────────────────────
+# ── animations ────────────────────
 app.mount(
     "/static",
     StaticFiles(

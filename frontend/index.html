@@ -4,83 +4,292 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Twitter Sentiment Analyzer</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem}
-    .card{background:#1e293b;border-radius:16px;padding:2rem;width:100%;max-width:580px;box-shadow:0 25px 50px rgba(0,0,0,0.5)}
+    body{
+      font-family:'Segoe UI',sans-serif;
+      background:#0f172a;
+      color:#e2e8f0;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:1rem;
+      overflow-x:hidden;
+    }
+
+    .scene{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:0;
+      width:100%;
+      max-width:900px;
+    }
+
+    .anim-panel{
+      width:180px;
+      min-width:180px;
+      height:220px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      opacity:0;
+      transition:opacity 0.6s ease, transform 0.6s ease;
+      pointer-events:none;
+    }
+    .anim-panel.left  { transform:translateX(-30px); }
+    .anim-panel.right { transform:translateX(30px);  }
+    .anim-panel.visible{
+      opacity:1;
+      transform:translateX(0);
+    }
+    .anim-panel div{ width:100%; height:100%; }
+
+    .card{
+      background:#1e293b;
+      border-radius:16px;
+      padding:2rem;
+      width:100%;
+      max-width:520px;
+      box-shadow:0 25px 50px rgba(0,0,0,0.5);
+      flex-shrink:0;
+      transition:box-shadow 0.5s ease;
+    }
+    .card.positive{ box-shadow:0 25px 50px rgba(16,185,129,0.2); }
+    .card.negative{ box-shadow:0 25px 50px rgba(239,68,68,0.2);  }
+    .card.neutral { box-shadow:0 25px 50px rgba(59,130,246,0.2); }
+
     h1{font-size:1.4rem;margin-bottom:4px}
     .sub{color:#94a3b8;font-size:0.8rem;margin-bottom:1.5rem}
-    textarea{width:100%;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;padding:0.75rem;font-size:0.9rem;resize:vertical;min-height:100px;outline:none;font-family:inherit}
+
+    textarea{
+      width:100%;
+      background:#0f172a;
+      border:1px solid #334155;
+      border-radius:8px;
+      color:#e2e8f0;
+      padding:0.75rem;
+      font-size:0.9rem;
+      resize:vertical;
+      min-height:100px;
+      outline:none;
+      font-family:inherit;
+      transition:border-color 0.2s;
+    }
     textarea:focus{border-color:#6366f1}
-    button{margin-top:0.75rem;width:100%;background:#6366f1;color:white;border:none;border-radius:8px;padding:0.75rem;font-size:1rem;cursor:pointer;transition:background 0.2s;font-family:inherit}
+
+    button{
+      margin-top:0.75rem;
+      width:100%;
+      background:#6366f1;
+      color:white;
+      border:none;
+      border-radius:8px;
+      padding:0.75rem;
+      font-size:1rem;
+      cursor:pointer;
+      transition:background 0.2s;
+      font-family:inherit;
+    }
     button:hover{background:#4f46e5}
     button:disabled{background:#334155;cursor:not-allowed}
+
     .result{margin-top:1.5rem;display:none}
-    .badge{display:inline-block;padding:0.3rem 1rem;border-radius:999px;font-weight:700;font-size:1.1rem;text-transform:capitalize}
+
+    .badge{
+      display:inline-block;
+      padding:0.3rem 1rem;
+      border-radius:999px;
+      font-weight:700;
+      font-size:1.1rem;
+      text-transform:capitalize;
+    }
     .positive{background:#065f46;color:#6ee7b7}
     .negative{background:#7f1d1d;color:#fca5a5}
-    .neutral{background:#1e3a5f;color:#93c5fd}
+    .neutral {background:#1e3a5f;color:#93c5fd}
+
     .conf{font-size:0.8rem;color:#94a3b8;margin-top:4px}
+
     .bars{margin-top:1rem}
     .bar-row{margin-bottom:6px}
-    .bar-label{font-size:0.75rem;color:#94a3b8;margin-bottom:2px;display:flex;justify-content:space-between}
+    .bar-label{
+      font-size:0.75rem;
+      color:#94a3b8;
+      margin-bottom:2px;
+      display:flex;
+      justify-content:space-between;
+    }
     .bar-track{background:#0f172a;border-radius:999px;height:8px}
-    .bar-fill{height:8px;border-radius:999px;transition:width 0.5s ease}
+    .bar-fill{height:8px;border-radius:999px;transition:width 0.6s ease}
+
     .error{color:#f87171;margin-top:0.75rem;font-size:0.85rem}
     .hint{font-size:0.75rem;color:#475569;margin-top:6px}
+
+    .anim-label{
+      text-align:center;
+      font-size:11px;
+      color:#64748b;
+      margin-top:4px;
+      font-weight:500;
+      letter-spacing:.04em;
+      text-transform:uppercase;
+    }
+    .anim-wrapper{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+    }
+
+    @media(max-width:680px){
+      .anim-panel{ display:none; }
+    }
   </style>
 </head>
 <body>
-<div class="card">
-  <h1>Twitter Sentiment Analyzer</h1>
-  <p class="sub">cardiffnlp/twitter-roberta-base-sentiment-latest</p>
-  <textarea id="inp" placeholder="Type a tweet or any text... (Ctrl+Enter to analyze)"></textarea>
-  <p class="hint">Try: "I love this product!" or "This is the worst experience ever."</p>
-  <button id="btn" onclick="analyze()">Analyze Sentiment</button>
-  <p class="error" id="err"></p>
-  <div class="result" id="res">
-    <p style="color:#94a3b8;font-size:0.75rem;margin-bottom:6px">Result</p>
-    <span class="badge" id="badge"></span>
-    <p class="conf" id="conf"></p>
-    <div class="bars" id="bars"></div>
-  </div>
-</div>
-<script>
-  const colors = {positive:"#6ee7b7", neutral:"#93c5fd", negative:"#fca5a5"};
 
+<div class="scene">
+
+  <!-- LEFT: Angry animation (negative) -->
+  <div class="anim-panel left" id="panel-angry">
+    <div class="anim-wrapper">
+      <div id="lottie-angry"></div>
+      <div class="anim-label">negative</div>
+    </div>
+  </div>
+
+  <!-- CENTER: Main card -->
+  <div class="card" id="main-card">
+    <h1>Twitter Sentiment Analyzer</h1>
+    <p class="sub">cardiffnlp/twitter-roberta-base-sentiment-latest</p>
+    <textarea id="inp" placeholder="Type a tweet or any text... (Ctrl+Enter to analyze)"></textarea>
+    <p class="hint">Try: "I love this product" or "This is the worst experience ever"</p>
+    <button id="btn" onclick="analyze()">Analyze Sentiment</button>
+    <p class="error" id="err"></p>
+
+    <div class="result" id="res">
+      <p style="color:#94a3b8;font-size:0.75rem;margin-bottom:6px">Result</p>
+      <span class="badge" id="badge"></span>
+      <p class="conf" id="conf"></p>
+      <div class="bars" id="bars"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Happy animation (positive) -->
+  <div class="anim-panel right" id="panel-happy">
+    <div class="anim-wrapper">
+      <div id="lottie-happy"></div>
+      <div class="anim-label">positive</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const colors = {
+    positive: "#6ee7b7",
+    neutral:  "#93c5fd",
+    negative: "#fca5a5"
+  };
+
+  // ── Load Lottie animations ───────────────────────────────────────
+  const happyAnim = lottie.loadAnimation({
+    container: document.getElementById('lottie-happy'),
+    renderer:  'svg',
+    loop:      true,
+    autoplay:  false,
+    path:      '/static/H2.json'
+  });
+
+  const angryAnim = lottie.loadAnimation({
+    container: document.getElementById('lottie-angry'),
+    renderer:  'svg',
+    loop:      true,
+    autoplay:  false,
+    path:      '/static/ANGRY.json'
+  });
+
+  // ── Show/hide animations based on sentiment ──────────────────────
+  function showAnimation(sentiment) {
+    const panelHappy = document.getElementById('panel-happy');
+    const panelAngry = document.getElementById('panel-angry');
+    const card       = document.getElementById('main-card');
+
+    panelHappy.classList.remove('visible');
+    panelAngry.classList.remove('visible');
+    card.className = 'card';
+    happyAnim.stop();
+    angryAnim.stop();
+
+    if (sentiment === 'positive') {
+      panelHappy.classList.add('visible');
+      happyAnim.play();
+      card.classList.add('positive');
+    } else if (sentiment === 'negative') {
+      panelAngry.classList.add('visible');
+      angryAnim.play();
+      card.classList.add('negative');
+    } else {
+      card.classList.add('neutral');
+    }
+  }
+
+  function hideAnimations() {
+    document.getElementById('panel-happy').classList.remove('visible');
+    document.getElementById('panel-angry').classList.remove('visible');
+    document.getElementById('main-card').className = 'card';
+    happyAnim.stop();
+    angryAnim.stop();
+  }
+
+  // ── Analyze function ─────────────────────────────────────────────
   async function analyze() {
     const text = document.getElementById("inp").value.trim();
     const btn  = document.getElementById("btn");
     const err  = document.getElementById("err");
     const res  = document.getElementById("res");
+
     if (!text) { err.textContent = "Please enter some text."; return; }
-    err.textContent = "";
-    btn.disabled = true;
-    btn.textContent = "Analyzing...";
+
+    err.textContent   = "";
+    btn.disabled      = true;
+    btn.textContent   = "Analyzing...";
     res.style.display = "none";
+    hideAnimations();
+
     try {
       const r = await fetch("/analyze", {
-        method: "POST",
+        method:  "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({text})
+        body:    JSON.stringify({text})
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.detail || "API error");
+
       document.getElementById("badge").textContent = d.sentiment;
       document.getElementById("badge").className   = "badge " + d.sentiment;
-      document.getElementById("conf").textContent  = `Confidence: ${(d.confidence*100).toFixed(1)}%`;
+      document.getElementById("conf").textContent  = `Confidence: ${(d.confidence * 100).toFixed(1)}%`;
+
       document.getElementById("bars").innerHTML = Object.entries(d.scores)
-        .sort((a,b) => b[1]-a[1])
-        .map(([l,s]) => `
+        .sort((a, b) => b[1] - a[1])
+        .map(([l, s]) => `
           <div class="bar-row">
-            <div class="bar-label"><span>${l}</span><span>${(s*100).toFixed(1)}%</span></div>
-            <div class="bar-track"><div class="bar-fill" style="width:${s*100}%;background:${colors[l]||'#6366f1'}"></div></div>
+            <div class="bar-label">
+              <span>${l}</span><span>${(s * 100).toFixed(1)}%</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill" style="width:${s*100}%;background:${colors[l]||'#6366f1'}"></div>
+            </div>
           </div>`).join("");
+
       res.style.display = "block";
+      showAnimation(d.sentiment);
+
     } catch(e) {
       err.textContent = e.message;
     } finally {
-      btn.disabled = false;
+      btn.disabled    = false;
       btn.textContent = "Analyze Sentiment";
     }
   }

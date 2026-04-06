@@ -1,18 +1,14 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import sys, os
 
 sys.path.insert(0, os.path.dirname(__file__))
-from model import predict, batch_predict, USE_LOCAL, LOCAL_MODEL_ID, API_MODEL_ID
+from model import predict, batch_predict
 
-app = FastAPI(
-    title="Twitter Sentiment Analyzer",
-    description="Powered by cardiffnlp/twitter-roberta-base-sentiment-latest",
-    version="1.0.0"
-)
+app = FastAPI(title="Twitter Sentiment Analyzer")
 
 app.add_middleware(
     CORSMiddleware,
@@ -21,27 +17,30 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Schemas
+# ── Serve static files (Lottie JSON animations) ────────────────────
+app.mount(
+    "/static",
+    StaticFiles(
+        directory=os.path.join(os.path.dirname(__file__), "../frontend/static")
+    ),
+    name="static"
+)
+
 class SingleInput(BaseModel):
     text: str
 
 class BatchInput(BaseModel):
     texts: list[str]
 
-# ── Routes
+@app.get("/")
+def root():
+    return FileResponse(
+        os.path.join(os.path.dirname(__file__), "../frontend/index.html")
+    )
+
 @app.get("/health")
 def health():
     return {"status": "healthy", "model": "twitter-roberta-base-sentiment-latest"}
-
-@app.get("/")
-def root():
-    return FileResponse("frontend/index.html")
-@app.get("/info")
-def info():
-    return {
-        "mode":  "local" if USE_LOCAL else "api",
-        "model": LOCAL_MODEL_ID if USE_LOCAL else API_MODEL_ID,
-    }
 
 @app.post("/analyze")
 def analyze(body: SingleInput):
